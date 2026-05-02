@@ -1,28 +1,213 @@
-
-<!doctype html>
+<!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>告白網站</title>
-  <link rel="stylesheet" href="style.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>告白網站</title>
+
+<style>
+body {
+    margin: 0;
+    height: 100vh;
+    background: black;
+    overflow: hidden;
+    font-family: sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: white;
+}
+
+.modal {
+    background: rgba(30,30,30,0.95);
+    padding: 40px;
+    border-radius: 20px;
+    text-align: center;
+    width: 360px;
+}
+
+.btn {
+    padding: 12px 30px;
+    border: none;
+    border-radius: 10px;
+    font-size: 18px;
+    cursor: pointer;
+}
+
+.agree {
+    background: #ff3b3b;
+    color: white;
+}
+
+.disagree {
+    position: fixed;
+    left: 0;
+    top: 0;
+    background: #555;
+    color: white;
+}
+
+.congrats {
+    position: absolute;
+    font-size: 40px;
+}
+
+.hidden {
+    display: none;
+}
+
+canvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    pointer-events: none;
+}
+</style>
 </head>
+
 <body>
-  <div id="modal" class="modal">
-    <div class="dialog">
-      <h2>你願意跟我再一起嗎?</h2>
-      <div class="buttons">
+
+<div id="modal" class="modal">
+    <h2>你願意跟我在一起嗎？</h2>
+    <div style="margin-top:20px;">
         <button id="agree" class="btn agree">同意</button>
-        <button id="disagree" class="btn disagree">不同意</button>
-      </div>
     </div>
-  </div>
+</div>
 
-  <div id="congrats" class="congrats hidden">
-    <h1>恭喜!</h1>
-    <canvas id="fireworks"></canvas>
-  </div>
+<button id="disagree" class="btn disagree">不同意</button>
 
-  <script src="script.js"></script>
+<div id="congrats" class="congrats hidden">恭喜來到告白網站</div>
+
+<canvas id="fireworks"></canvas>
+
+<script>
+const d = document.getElementById('disagree');
+const a = document.getElementById('agree');
+const m = document.getElementById('modal');
+const c = document.getElementById('congrats');
+const v = document.getElementById('fireworks');
+const t = v.getContext('2d');
+
+let p = [];
+let f = [];
+let running = false;
+
+const origin = {
+    x: window.innerWidth * 0.65,
+    y: window.innerHeight * 0.5
+};
+
+let x = origin.x;
+let y = origin.y;
+
+d.style.position = 'fixed';
+d.style.left = x + 'px';
+d.style.top = y + 'px';
+
+function moveAI(mx, my) {
+    const dx = x - mx;
+    const dy = y - my;
+    const dist = Math.hypot(dx, dy);
+
+    if (dist < 180) {
+        x += dx / dist * 18;
+        y += dy / dist * 18;
+    } else {
+        x += (origin.x - x) * 0.08;
+        y += (origin.y - y) * 0.08;
+    }
+
+    x = Math.max(0, Math.min(window.innerWidth - 120, x));
+    y = Math.max(0, Math.min(window.innerHeight - 50, y));
+
+    d.style.left = x + 'px';
+    d.style.top = y + 'px';
+}
+
+document.addEventListener('mousemove', (e) => {
+    moveAI(e.clientX, e.clientY);
+});
+
+a.onclick = () => {
+    if (running) return;
+    running = true;
+
+    m.style.display = 'none';
+    c.classList.remove('hidden');
+
+    v.width = window.innerWidth;
+    v.height = window.innerHeight;
+
+    loop();
+};
+
+window.addEventListener('resize', () => {
+    v.width = window.innerWidth;
+    v.height = window.innerHeight;
+});
+
+function loop() {
+    requestAnimationFrame(loop);
+
+    t.fillStyle = 'rgba(0,0,0,0.2)';
+    t.fillRect(0, 0, v.width, v.height);
+
+    if (Math.random() < 0.05) {
+        f.push({
+            x: Math.random() * v.width,
+            y: v.height,
+            ty: Math.random() * v.height * 0.4,
+            v: Math.random() * 6 + 8,
+            c: `hsl(${Math.random() * 360},100%,60%)`
+        });
+    }
+
+    for (let i = f.length - 1; i >= 0; i--) {
+        let fw = f[i];
+        fw.y -= fw.v;
+
+        t.fillStyle = fw.c;
+        t.beginPath();
+        t.arc(fw.x, fw.y, 3, 0, Math.PI * 2);
+        t.fill();
+
+        if (fw.y <= fw.ty) {
+            for (let j = 0; j < 60; j++) {
+                p.push({
+                    x: fw.x,
+                    y: fw.y,
+                    vx: (Math.random() - 0.5) * 15,
+                    vy: (Math.random() - 0.5) * 15,
+                    l: Math.random() * 30 + 50,
+                    c: fw.c
+                });
+            }
+            f.splice(i, 1);
+        }
+    }
+
+    for (let i = p.length - 1; i >= 0; i--) {
+        let pt = p[i];
+
+        pt.x += pt.vx;
+        pt.y += pt.vy;
+        pt.vy += 0.25;
+        pt.l--;
+
+        t.globalAlpha = Math.max(0, pt.l / 80);
+        t.fillStyle = pt.c;
+        t.beginPath();
+        t.arc(pt.x, pt.y, 2, 0, Math.PI * 2);
+        t.fill();
+        t.globalAlpha = 1;
+
+        if (pt.l <= 0) p.splice(i, 1);
+    }
+
+    if (p.length > 800) p.splice(0, 200);
+    if (f.length > 50) f.splice(0, 10);
+}
+</script>
+
 </body>
 </html>
